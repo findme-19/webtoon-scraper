@@ -1,0 +1,6 @@
+node_modules/
+downloads/
+out/
+*.pdf
+.cookie
+.DS_Store

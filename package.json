@@ -1,0 +1,38 @@
+{
+  "name": "webtoon-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./cli": "./src/cli.js"
+  },
+  "bin": {
+    "webtoon": "./src/cli.js"
+  },
+  "files": [
+    "./src",
+    "./README.md",
+    "./LICENSE",
+    "./package.json"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "description": "Webtoons.com scraper: search, series chapter list, episode images, batch download and per-chapter PDF export. Pure Node ESM, no browser.",
+  "keywords": [
+    "webtoon",
+    "webtoons",
+    "scraper",
+    "manga",
+    "manhwa",
+    "comics",
+    "pdf"
+  ],
+  "license": "MIT",
+  "author": "findme-19",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/findme-19/webtoon-scraper.git"
+  }
+}
