@@ -48,6 +48,9 @@ webtoon pdf "<list-url>" --latest 3 --merge combined.pdf
 
 # everything
 webtoon pdf "<list-url>" --all -o downloads/Full
+
+# combine ALREADY-downloaded per-chapter PDFs into one file (no re-fetch, no rebuild)
+webtoon merge downloads/CFYOW downloads/CFYOW/combined.pdf
 ```
 
 Options: `--lang en|id|...` (locale), `--concurrency N`, `--delay MS`

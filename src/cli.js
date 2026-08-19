@@ -18,8 +18,8 @@ import { getChapterList } from './series.js';
 import { getEpisodeImages } from './episode.js';
 import { downloadImages } from './downloader.js';
 import { imagesToPdf } from './pdf.js';
-import { mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, readdir, stat } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 function fail(msg) {
   console.error(`error: ${msg}`);
@@ -153,6 +153,40 @@ async function resolveEpisodes(opts, client) {
   return { series, episodes: list, direct: false };
 }
 
+/**
+ * `merge` — combine already-built chapter PDFs in a directory into one file.
+ * No downloading, no rebuild: reads every *.pdf in `dir` (numeric sort),
+ * concatenates and writes `out`.
+ *   webtoon merge <dir> out.pdf
+ *   webtoon merge <dir> -o out.pdf
+ */
+async function cmdMerge(opts) {
+  const dir = opts._[0];
+  const out =
+    opts._[1] ||
+    (opts.out && String(opts.out).toLowerCase().endsWith('.pdf') ? opts.out : '');
+  if (!dir || !out) fail('usage: webtoon merge <dir-containing-chapter-pdfs> <out.pdf>');
+  const files = [];
+  for (const name of (await readdir(dir)).sort()) {
+    if (!name.toLowerCase().endsWith('.pdf')) continue;
+    const abs = join(dir, name);
+    try {
+      if ((await stat(abs)).isFile()) files.push(abs);
+    } catch {
+      /* ignore */
+    }
+  }
+  if (files.length === 0) fail(`no PDF files found in ${dir}`);
+  files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+  await mkdir(dirname(out), { recursive: true });
+  const { mergePdfs } = await import('./pdf.js');
+  const res = await mergePdfs(files, out);
+  console.log(
+    `merged ${files.length} PDFs → ${res.path} (${res.pages} pages, ${(res.bytes / 1024 / 1024).toFixed(2)} MB)`,
+  );
+}
+
 async function cmdDownload(opts) {
   const client = new WebtoonClient({ lang: opts.lang });
   const { series, episodes, direct } = await resolveEpisodes(opts, client);
@@ -240,6 +274,7 @@ async function main() {
     if (command === 'images') return await cmdImages(opts);
     if (command === 'download') return await cmdDownload(opts);
     if (command === 'pdf') return await cmdPdf(opts);
+    if (command === 'merge') return await cmdMerge(opts);
     fail(`unknown command: ${command}`);
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
@@ -256,6 +291,7 @@ USAGE
   webtoon download <series-url> --episodes 5,9-12|--latest 3|--all [-o DIR]
   webtoon pdf <viewer-url|-o out.pdf>   (one chapter → one PDF)
   webtoon pdf <series-url> --episodes 5,9-12|--latest 3|--all [--merge out.pdf]
+  webtoon merge <dir-with-chapter-pdfs> out.pdf   (merge already-built PDFs only)
 
 OPTIONS
   --lang xx          webtoons locale (en|id|zh|ja|ko), default en
