@@ -18,6 +18,8 @@ import { getChapterList } from './series.js';
 import { getEpisodeImages } from './episode.js';
 import { downloadImages } from './downloader.js';
 import { imagesToPdf } from './pdf.js';
+import { mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
 
 function fail(msg) {
   console.error(`error: ${msg}`);
@@ -31,7 +33,7 @@ function parseArgs(argv) {
     if (a === '-h' || a === '--help') return { help: true };
     if (a === '--json') out.json = true;
     else if (a === '--all') out.all = true;
-    else if (a === '--merge') out.merge = true;
+    else if (a === '--merge') out.merge = argv[++i] ?? true; // value = output file, bare flag = default
     else if (a === '--lang') out.lang = argv[++i];
     else if (a === '--limit') out.limit = Number(argv[++i]);
     else if (a === '--latest') out.latest = Number(argv[++i]);
@@ -211,7 +213,12 @@ async function cmdPdf(opts) {
   }
   console.log(`\nbatch done: ${ok}/${episodes.length} PDFs saved` + (failed ? `, ${failed} failed` : ''));
   if (opts.merge && files.length > 1) {
-    const merged = opts.out && String(opts.out).toLowerCase().endsWith('.pdf') ? opts.out : `downloads/${slug}/merged.pdf`;
+    // Precedence: explicit --merge path  >  -o out.pdf  >  default under downloads/
+    const merged =
+      (typeof opts.merge === 'string' && opts.merge) ||
+      (opts.out && String(opts.out).toLowerCase().endsWith('.pdf') && !opts.merge ? opts.out : '') ||
+      `downloads/${slug}/merged.pdf`;
+    await mkdir(dirname(merged), { recursive: true });
     const { mergePdfs } = await import('./pdf.js');
     const res = await mergePdfs(files, merged, { title: series.title });
     console.log(`merged ${files.length} PDFs → ${res.path} (${(res.bytes / 1024 / 1024).toFixed(2)} MB)`);
